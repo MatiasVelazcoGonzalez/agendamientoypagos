@@ -8,7 +8,15 @@ const getRequiredEnv = (name: string): string => {
   return value;
 };
 
-export const serverEnv = {
+export const getPublicEnv = () => ({
+  supabaseUrl: getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
+  supabaseAnonKey: getRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  mercadoPagoPublicKey: getRequiredEnv("NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY"),
+  baseUrl: getRequiredEnv("NEXT_PUBLIC_BASE_URL"),
+  sessionPrice: getRequiredEnv("NEXT_PUBLIC_PRECIO_SESION"),
+});
+
+export const getServerEnv = () => ({
   googleClientId: getRequiredEnv("GOOGLE_CLIENT_ID"),
   googleClientSecret: getRequiredEnv("GOOGLE_CLIENT_SECRET"),
   googleRefreshToken: getRequiredEnv("GOOGLE_REFRESH_TOKEN"),
@@ -19,12 +27,4 @@ export const serverEnv = {
   whatsappPhoneNumberId: getRequiredEnv("WHATSAPP_PHONE_NUMBER_ID"),
   whatsappVerifyToken: getRequiredEnv("WHATSAPP_VERIFY_TOKEN"),
   supabaseServiceRoleKey: getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
-};
-
-export const publicEnv = {
-  supabaseUrl: getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-  supabaseAnonKey: getRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  mercadoPagoPublicKey: getRequiredEnv("NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY"),
-  baseUrl: getRequiredEnv("NEXT_PUBLIC_BASE_URL"),
-  sessionPrice: getRequiredEnv("NEXT_PUBLIC_PRECIO_SESION"),
-};
+});

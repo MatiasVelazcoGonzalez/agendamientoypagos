@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { publicEnv, serverEnv } from "@/lib/env";
+import { getPublicEnv, getServerEnv } from "@/lib/env";
+
+const publicEnv = getPublicEnv();
+const serverEnv = getServerEnv();
 
 export const supabaseAdmin = createClient(
   publicEnv.supabaseUrl,

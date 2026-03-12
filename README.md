@@ -2,15 +2,23 @@
 
 Base de **Next.js 14 + App Router + Tailwind CSS** para construir un sistema de reservas y pagos automáticos (Google Calendar + MercadoPago + WhatsApp + Supabase).
 
+## Qué debemos hacer para que funcione
+
+1. Instalar dependencias en una máquina con acceso a npm registry.
+2. Crear variables de entorno locales desde `.env.local.example`.
+3. Ejecutar el SQL en Supabase para crear `bookings`, índices y funciones de concurrencia/expiración.
+4. Levantar la app y verificar endpoint de salud.
+
 ## Estado actual
 
 - ✅ **Paso 1**: scaffolding de Next.js + Tailwind.
 - ✅ **Paso 2**: variables de entorno de referencia, cliente Supabase y esquema SQL base con control de concurrencia por slot.
+- ✅ Fix aplicado: separación segura de variables públicas vs. servidor para evitar fallos por secretos faltantes en módulos compartidos.
 
 ## Estructura clave
 
 - `src/app/`: UI y API Routes.
-- `src/lib/env.ts`: validación de variables de entorno obligatorias.
+- `src/lib/env.ts`: validación de variables de entorno obligatorias (con funciones separadas para entorno público/servidor).
 - `src/lib/supabase/`: clientes Supabase (público y service role).
 - `supabase/schema.sql`: tabla `bookings`, índices y funciones SQL de expiración/bloqueo.
 - `.env.local.example`: plantilla de variables requeridas.
@@ -23,11 +31,11 @@ Base de **Next.js 14 + App Router + Tailwind CSS** para construir un sistema de 
 cp .env.local.example .env.local
 ```
 
-2. Completa todos los valores antes de ejecutar APIs que dependan de integraciones externas.
+2. Completa los valores.
 
 ## Supabase
 
-Ejecuta el SQL de `supabase/schema.sql` en el SQL Editor del proyecto Supabase para crear tabla, índices y funciones.
+Ejecuta `supabase/schema.sql` en el SQL Editor de tu proyecto Supabase.
 
 ## Scripts
 
@@ -37,11 +45,18 @@ Ejecuta el SQL de `supabase/schema.sql` en el SQL Editor del proyecto Supabase p
 - `npm run lint`: lint de Next.
 - `npm run typecheck`: chequeo de tipos TypeScript.
 
-## Debug rápido
+## Verificación mínima
 
-- `GET /api/health` devuelve estado básico del backend.
-- Si falta una variable de entorno obligatoria, el proyecto lanzará error explícito con el nombre de la variable faltante.
+```bash
+npm install
+npm run dev
+```
 
-## Nota del entorno
+Luego abrir:
 
-En este entorno automatizado, `npm install` falla con HTTP 403 hacia npm registry. El código queda preparado para ejecución normal en un entorno con acceso al registro.
+- `http://localhost:3000`
+- `http://localhost:3000/api/health`
+
+## Nota del entorno automatizado
+
+En este entorno de ejecución de agente, `npm install` responde `403 Forbidden` hacia npm registry. Eso impide correr `next dev/build/lint/typecheck` aquí, pero no afecta la validez del código para una máquina/CI con acceso normal a npm.
