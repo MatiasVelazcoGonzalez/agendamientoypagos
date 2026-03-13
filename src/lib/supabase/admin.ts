@@ -1,15 +1,15 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getPublicEnv, getServerEnv } from "@/lib/env";
+import { getPublicEnv, getSupabaseServerEnv } from "@/lib/env";
 
 let _admin: SupabaseClient | null = null;
 
 export function getSupabaseAdmin(): SupabaseClient {
   if (!_admin) {
     const publicEnv = getPublicEnv();
-    const serverEnv = getServerEnv();
+    const serverEnv = getSupabaseServerEnv();
     _admin = createClient(
       publicEnv.supabaseUrl,
-      serverEnv.supabaseServiceRoleKey,
+      serverEnv.serviceRoleKey,
       {
         auth: {
           persistSession: false,

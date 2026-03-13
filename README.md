@@ -1,123 +1,90 @@
 # Agendamiento y Pagos
 
-Sistema completo de **reservas online con pagos automáticos** construido con:
+Sistema completo de reservas online con pagos automáticos construido con:
 
-- **Next.js 14** (App Router)
-- **Tailwind CSS** para la UI
-- **Supabase** como base de datos (PostgreSQL)
-- **MercadoPago** para el procesamiento de pagos
-- **Google Calendar** para crear eventos automáticamente
-- **WhatsApp Business API** para notificaciones
-
-## Funcionalidades
-
-- 📅 Formulario de reserva de turno (fecha, horario, datos personales)
-- 💳 Redirección automática a MercadoPago para el pago
-- ✅ Confirmación automática vía webhook: crea evento en Google Calendar y envía mensaje de WhatsApp
-- 🔒 Control de concurrencia por slot con advisory locks (sin doble reserva)
-- ⏱️ Expiración automática de turnos pendientes a los 15 minutos
-
-## Estructura del proyecto
-
-```
-src/
-  app/
-    page.tsx                          # Formulario de reserva
-    layout.tsx                        # Layout principal
-    globals.css                       # Estilos globales
-    api/
-      health/route.ts                 # Health check
-      bookings/route.ts               # Crear / consultar turno
-      webhooks/mercadopago/route.ts   # Webhook de pago
-    booking/
-      success/page.tsx                # Pago aprobado
-      failure/page.tsx                # Pago rechazado
-      pending/page.tsx                # Pago pendiente
-  lib/
-    env.ts                            # Validación de variables de entorno
-    google-calendar.ts                # Integración Google Calendar
-    mercadopago.ts                    # Integración MercadoPago
-    whatsapp.ts                       # Integración WhatsApp Business
-    supabase/
-      client.ts                       # Cliente público Supabase
-      admin.ts                        # Cliente service role Supabase
-  types/
-    booking.ts                        # Tipos TypeScript
-supabase/
-  schema.sql                          # Esquema SQL + funciones PL/pgSQL
-```
+- Next.js (App Router)
+- Tailwind CSS
+- Supabase (PostgreSQL)
+- MercadoPago
+- Google Calendar API
+- WhatsApp Business API
 
 ## Configuración
 
-### 1. Variables de entorno
+### 1) Variables de entorno
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-Completa los valores:
+Completá las variables de:
 
-| Variable | Descripción |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL de tu proyecto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key de Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key de Supabase |
-| `MERCADOPAGO_ACCESS_TOKEN` | Access token de MercadoPago |
-| `MERCADOPAGO_WEBHOOK_SECRET` | Webhook secret de MercadoPago |
-| `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | Public key de MercadoPago |
-| `GOOGLE_CLIENT_ID` | OAuth Client ID de Google |
-| `GOOGLE_CLIENT_SECRET` | OAuth Client Secret de Google |
-| `GOOGLE_REFRESH_TOKEN` | Refresh token de Google |
-| `GOOGLE_CALENDAR_ID` | ID del calendario Google |
-| `WHATSAPP_TOKEN` | Token de WhatsApp Business API |
-| `WHATSAPP_PHONE_NUMBER_ID` | ID del número de teléfono |
-| `WHATSAPP_VERIFY_TOKEN` | Token de verificación del webhook |
-| `NEXT_PUBLIC_BASE_URL` | URL pública de la app (ej: `https://tudominio.com`) |
-| `NEXT_PUBLIC_PRECIO_SESION` | Precio de la sesión en ARS |
+- Google Calendar
+- MercadoPago
+- WhatsApp Business
+- Supabase
+- App
 
-### 2. Base de datos Supabase
+### 2) Base de datos (Supabase)
 
-Ejecuta el archivo `supabase/schema.sql` en el SQL Editor de tu proyecto Supabase. Esto crea:
+Ejecutá `supabase/schema.sql` en el SQL Editor.
 
-- Tabla `bookings` con todos los campos necesarios
-- Índices para consultas eficientes
-- Índice único parcial que evita doble reserva del mismo slot
-- Función `expire_pending_bookings()` para expirar turnos
-- Función `create_pending_booking()` con advisory lock para control de concurrencia
-
-### 3. Instalar dependencias y ejecutar
+### 3) Instalar y ejecutar
 
 ```bash
 npm install
 npm run dev
 ```
 
-Verificar:
-
-- `http://localhost:3000` — formulario de reserva
-- `http://localhost:3000/api/health` — health check
-
 ## Scripts
 
-```bash
-npm run dev       # Servidor de desarrollo
-npm run build     # Build de producción
-npm run start     # Iniciar build
-npm run lint      # ESLint
-npm run typecheck # TypeScript check
-```
+- `npm run dev`
+- `npm run build`
+- `npm run start`
+- `npm run lint`
+- `npm run typecheck`
+
+## Endpoints
+
+- `GET /api/health`
+- `GET /api/availability?start=YYYY-MM-DD&end=YYYY-MM-DD`
+- `POST /api/bookings`
+- `POST /api/bookings/prepare`
+- `POST /api/webhooks/mercadopago`
+
+## Variables de entorno
+
+| Variable | Requerida | Descripcion |
+|----------|-----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Si | URL del proyecto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Si | Anon key de Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Si | Service role key (server-side) |
+| `MERCADOPAGO_ACCESS_TOKEN` | Si | Access token de MercadoPago |
+| `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | Si | Public key de MercadoPago |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Si | Secret para firmas de webhook |
+| `NEXT_PUBLIC_BASE_URL` | Si | URL publica del sitio |
+| `NEXT_PUBLIC_PRECIO_SESION` | Si | Precio de la sesion en moneda local |
+| `GOOGLE_CLIENT_ID` | No | Client ID OAuth2 de Google |
+| `GOOGLE_CLIENT_SECRET` | No | Client secret OAuth2 de Google |
+| `GOOGLE_REFRESH_TOKEN` | No | Refresh token con scope Calendar |
+| `GOOGLE_CALENDAR_ID` | No | ID del calendario (ej: primary) |
+| `WHATSAPP_TOKEN` | No | Token permanente de Meta |
+| `WHATSAPP_PHONE_NUMBER_ID` | No | ID del numero en Meta Business |
+| `WHATSAPP_VERIFY_TOKEN` | No | Token para validar webhook de Meta |
+| `NEXT_PUBLIC_APP_TIMEZONE` | No | Timezone (default: America/Argentina/Buenos_Aires) |
+
+Google Calendar y WhatsApp son opcionales. Si no se configuran el sistema los omite sin fallar.
 
 ## Flujo de reserva
 
-1. El usuario completa el formulario con sus datos y elige fecha/horario
-2. La API `/api/bookings` crea un turno `pending` en Supabase (con control de concurrencia)
-3. Se crea una preferencia de pago en MercadoPago y se redirige al usuario
-4. Al completar el pago, MercadoPago llama al webhook `/api/webhooks/mercadopago`
-5. El webhook:
-   - Actualiza el estado del turno a `paid`
-   - Crea el evento en Google Calendar
-   - Envía confirmación por WhatsApp al cliente
+1. Cliente elige horario en `/` o `/reservar`
+2. `POST /api/bookings` (o `/api/bookings/prepare`) crea un booking pending en Supabase con advisory lock para prevenir duplicados, luego crea una preference de pago en MercadoPago
+3. Cliente completa el pago en el checkout de MercadoPago
+4. MercadoPago llama a `POST /api/webhooks/mercadopago`, que verifica la firma HMAC-SHA256, marca el booking como `paid`, agrega el evento en Google Calendar (idempotente) y envia confirmacion por WhatsApp
 
-## Deploy
+## Deploy en Vercel
 
-El proyecto incluye `vercel.json` para deploy directo en Vercel. También funciona en cualquier plataforma que soporte Node.js.
+1. Conectar el repositorio en vercel.com
+2. Agregar todas las variables de entorno en el dashboard de Vercel
+3. Configurar el webhook de MercadoPago apuntando a `https://tudominio.com/api/webhooks/mercadopago`
+4. El archivo `vercel.json` ya incluye la configuracion necesaria

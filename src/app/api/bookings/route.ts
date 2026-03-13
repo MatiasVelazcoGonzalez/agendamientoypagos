@@ -1,98 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { createPaymentPreference } from "@/lib/mercadopago";
+import { z } from "zod";
+import {
+  createBookingWithPayment,
+  SlotUnavailableError,
+} from "@/lib/booking/create-booking";
 import type { CreateBookingInput } from "@/types/booking";
 
+const createBookingSchema = z.object({
+  name: z.string().min(3).max(120),
+  email: z.string().email().max(160),
+  phone: z.string().min(8).max(30),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+});
+
 export async function POST(request: NextRequest) {
-  let body: CreateBookingInput;
+  let payload: unknown;
 
   try {
-    body = (await request.json()) as CreateBookingInput;
+    payload = (await request.json()) as CreateBookingInput;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { name, email, phone, date, time } = body;
-
-  if (!name || !email || !phone || !date || !time) {
+  const parsed = createBookingSchema.safeParse(payload);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Missing required fields: name, email, phone, date, time" },
-      { status: 400 },
-    );
-  }
-
-  // Basic email validation
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
-  }
-
-  // Date format validation (YYYY-MM-DD)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return NextResponse.json(
-      { error: "Invalid date format. Use YYYY-MM-DD" },
-      { status: 400 },
-    );
-  }
-
-  // Time format validation (HH:MM)
-  if (!/^\d{2}:\d{2}$/.test(time)) {
-    return NextResponse.json(
-      { error: "Invalid time format. Use HH:MM" },
+      {
+        error: "Invalid booking payload",
+        details: parsed.error.flatten(),
+      },
       { status: 400 },
     );
   }
 
   try {
-    // Create pending booking with concurrency control via advisory lock
-    const { data: booking, error: bookingError } = await supabaseAdmin.rpc(
-      "create_pending_booking",
-      {
-        p_name: name,
-        p_email: email,
-        p_phone: phone,
-        p_date: date,
-        p_time: time,
-        p_mercadopago_preference_id: null,
-      },
-    );
-
-    if (bookingError) {
-      if (bookingError.message.includes("SLOT_ALREADY_TAKEN")) {
-        return NextResponse.json(
-          { error: "El horario seleccionado ya no está disponible." },
-          { status: 409 },
-        );
-      }
-      throw bookingError;
-    }
-
-    // Create MercadoPago preference
-    const preference = await createPaymentPreference({
-      bookingId: booking.id as string,
-      name,
-      email,
-      date,
-      time,
-    });
-
-    // Update booking with preference ID
-    const { error: updateError } = await supabaseAdmin
-      .from("bookings")
-      .update({ mercadopago_preference_id: preference.id })
-      .eq("id", booking.id);
-
-    if (updateError) {
-      throw updateError;
-    }
+    const result = await createBookingWithPayment(parsed.data);
 
     return NextResponse.json(
       {
-        bookingId: booking.id,
-        paymentUrl: preference.initPoint,
+        bookingId: result.bookingId,
+        paymentUrl: result.paymentUrl,
+        preferenceId: result.preferenceId,
       },
       { status: 201 },
     );
   } catch (err) {
+    if (err instanceof SlotUnavailableError) {
+      return NextResponse.json(
+        { error: "El horario seleccionado ya no está disponible." },
+        { status: 409 },
+      );
+    }
+
     console.error("[POST /api/bookings] error:", err);
     return NextResponse.json(
       { error: "Error al crear el turno. Intente nuevamente." },

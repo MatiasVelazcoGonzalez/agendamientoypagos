@@ -1,9 +1,9 @@
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
-import { getServerEnv, getPublicEnv } from "@/lib/env";
+import { getMercadoPagoEnv, getPublicEnv } from "@/lib/env";
 
 function getMercadoPagoClient() {
-  const env = getServerEnv();
-  return new MercadoPagoConfig({ accessToken: env.mercadoPagoAccessToken });
+  const env = getMercadoPagoEnv();
+  return new MercadoPagoConfig({ accessToken: env.accessToken });
 }
 
 export interface CreatePreferenceInput {

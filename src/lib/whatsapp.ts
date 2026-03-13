@@ -1,4 +1,4 @@
-import { getServerEnv } from "@/lib/env";
+import { getWhatsAppEnvOptional } from "@/lib/env";
 
 interface WhatsAppTextMessage {
   to: string;
@@ -6,16 +6,20 @@ interface WhatsAppTextMessage {
 }
 
 async function sendWhatsAppMessage({ to, text }: WhatsAppTextMessage): Promise<void> {
-  const env = getServerEnv();
+  const env = getWhatsAppEnvOptional();
+  if (!env) {
+    console.warn("[WhatsApp] Not configured – skipping notification");
+    return;
+  }
 
   const normalizedPhone = to.replace(/\D/g, "");
 
   const response = await fetch(
-    `https://graph.facebook.com/v19.0/${env.whatsappPhoneNumberId}/messages`,
+    `https://graph.facebook.com/v19.0/${env.phoneNumberId}/messages`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${env.whatsappToken}`,
+        Authorization: `Bearer ${env.token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -39,8 +43,9 @@ export async function sendBookingConfirmationWhatsApp(params: {
   date: string;
   time: string;
 }): Promise<void> {
+  const time = params.time.slice(0, 5); // normalize "HH:MM:SS" → "HH:MM"
   const text =
-    `¡Hola ${params.name}! Tu turno fue confirmado para el ${params.date} a las ${params.time} hs. ` +
+    `¡Hola ${params.name}! Tu turno fue confirmado para el ${params.date} a las ${time} hs. ` +
     `Te esperamos. Si necesitás cancelar o reprogramar, respondé este mensaje.`;
 
   await sendWhatsAppMessage({ to: params.phone, text });
@@ -52,8 +57,9 @@ export async function sendBookingReminderWhatsApp(params: {
   date: string;
   time: string;
 }): Promise<void> {
+  const time = params.time.slice(0, 5); // normalize "HH:MM:SS" → "HH:MM"
   const text =
-    `¡Hola ${params.name}! Te recordamos que mañana tenés turno a las ${params.time} hs. ` +
+    `¡Hola ${params.name}! Te recordamos que mañana tenés turno a las ${time} hs. ` +
     `Si necesitás cancelar, respondé este mensaje.`;
 
   await sendWhatsAppMessage({ to: params.phone, text });
