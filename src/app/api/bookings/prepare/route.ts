@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import {
+  createBookingWithPayment,
+  SlotUnavailableError,
+} from "@/lib/booking/create-booking";
+import { formatDateInAppTimezone, formatTimeInAppTimezone } from "@/lib/timezone";
 
 const bookingSchema = z.object({
   name: z.string().min(3),
@@ -10,7 +14,13 @@ const bookingSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const payload = await req.json();
+  let payload: unknown;
+  try {
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const parsed = bookingSchema.safeParse(payload);
 
   if (!parsed.success) {
@@ -18,30 +28,36 @@ export async function POST(req: Request) {
   }
 
   const slotDate = new Date(parsed.data.slotStart);
-  const date = slotDate.toISOString().slice(0, 10);
-  const time = slotDate.toISOString().slice(11, 19);
-  const preferenceId = `pref_${crypto.randomUUID()}`;
-
-  const { data, error } = await supabaseAdmin.rpc("create_pending_booking", {
-    p_name: parsed.data.name,
-    p_email: parsed.data.email,
-    p_phone: parsed.data.phone,
-    p_date: date,
-    p_time: time,
-    p_mercadopago_preference_id: preferenceId,
-  });
-
-  if (error) {
-    const isSlotError = error.message.includes("SLOT_ALREADY_TAKEN");
-
-    return NextResponse.json(
-      { error: isSlotError ? "slot_unavailable" : error.message },
-      { status: isSlotError ? 409 : 500 },
-    );
+  if (Number.isNaN(slotDate.getTime())) {
+    return NextResponse.json({ error: "Invalid slotStart" }, { status: 400 });
   }
 
-  return NextResponse.json({
-    booking: data,
-    checkoutUrl: `/checkout/simulado?bookingId=${data.id}&preferenceId=${preferenceId}`,
-  });
+  const date = formatDateInAppTimezone(slotDate);
+  const time = formatTimeInAppTimezone(slotDate);
+
+  try {
+    const result = await createBookingWithPayment({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      phone: parsed.data.phone,
+      date,
+      time,
+    });
+
+    return NextResponse.json({
+      bookingId: result.bookingId,
+      checkoutUrl: result.paymentUrl,
+      preferenceId: result.preferenceId,
+    });
+  } catch (error) {
+    if (error instanceof SlotUnavailableError) {
+      return NextResponse.json({ error: "slot_unavailable" }, { status: 409 });
+    }
+
+    console.error("[POST /api/bookings/prepare] error:", error);
+    return NextResponse.json(
+      { error: "No se pudo preparar la reserva." },
+      { status: 500 },
+    );
+  }
 }

@@ -15,3 +15,11 @@ export interface Booking {
   created_at: string;
   expires_at: string | null;
 }
+
+export interface CreateBookingInput {
+  name: string;
+  email: string;
+  phone: string;
+  date: string;
+  time: string;
+}

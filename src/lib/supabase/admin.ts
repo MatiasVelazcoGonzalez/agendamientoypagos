@@ -1,16 +1,30 @@
-import { createClient } from "@supabase/supabase-js";
-import { getPublicEnv, getServerEnv } from "@/lib/env";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getPublicEnv, getSupabaseServerEnv } from "@/lib/env";
 
-const publicEnv = getPublicEnv();
-const serverEnv = getServerEnv();
+let _admin: SupabaseClient | null = null;
 
-export const supabaseAdmin = createClient(
-  publicEnv.supabaseUrl,
-  serverEnv.supabaseServiceRoleKey,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+export function getSupabaseAdmin(): SupabaseClient {
+  if (!_admin) {
+    const publicEnv = getPublicEnv();
+    const serverEnv = getSupabaseServerEnv();
+    _admin = createClient(
+      publicEnv.supabaseUrl,
+      serverEnv.serviceRoleKey,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      },
+    );
+  }
+  return _admin;
+}
+
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabaseAdmin() as unknown as Record<string | symbol, unknown>)[
+      prop
+    ];
   },
-);
+});

@@ -30,32 +30,46 @@ export default function BookingFlow() {
   const initialDate = useMemo(() => thisMonday(), []);
 
   const loadAvailability = async (startStr: string, endStr: string) => {
-    const start = startStr.slice(0, 10);
-    const end = endStr.slice(0, 10);
-    const res = await fetch(`/api/availability?start=${start}&end=${end}`);
-    const data = (await res.json()) as AvailabilityResponse;
-    setSlots(data.slots ?? []);
+    try {
+      const start = startStr.slice(0, 10);
+      const end = endStr.slice(0, 10);
+      const res = await fetch(`/api/availability?start=${start}&end=${end}`);
+      const data = (await res.json()) as AvailabilityResponse;
+      setSlots(data.slots ?? []);
+    } catch (err) {
+      console.warn("[loadAvailability] Error fetching slots:", err);
+      setSlots([]);
+    }
   };
 
   const handleSubmit = async () => {
     setMessage("");
     setLoading(true);
+    try {
+      const res = await fetch("/api/bookings/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, slotStart: selectedSlot }),
+      });
 
-    const res = await fetch("/api/bookings/prepare", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone, slotStart: selectedSlot }),
-    });
+      const data = await res.json();
 
-    const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.error === "slot_unavailable" ? "Ese horario ya fue reservado. Elige otro." : "No se pudo preparar la reserva.");
+        return;
+      }
 
-    if (!res.ok) {
+      if (!data.checkoutUrl) {
+        setMessage("Error interno: no se recibió URL de pago.");
+        return;
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch {
+      setMessage("Error de red. Intenta nuevamente.");
+    } finally {
       setLoading(false);
-      setMessage(data.error === "slot_unavailable" ? "Ese horario ya fue reservado. Elige otro." : "No se pudo preparar la reserva.");
-      return;
     }
-
-    window.location.href = data.checkoutUrl;
   };
 
   return (
