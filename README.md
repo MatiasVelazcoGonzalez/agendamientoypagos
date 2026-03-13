@@ -1,62 +1,62 @@
 # Agendamiento y Pagos
 
-Base de **Next.js 14 + App Router + Tailwind CSS** para construir un sistema de reservas y pagos automáticos (Google Calendar + MercadoPago + WhatsApp + Supabase).
+Sistema de agendamiento con **Next.js 14 + App Router + Tailwind + Supabase**.
 
-## Qué debemos hacer para que funcione
+## Flujo implementado (actual)
 
-1. Instalar dependencias en una máquina con acceso a npm registry.
-2. Crear variables de entorno locales desde `.env.local.example`.
-3. Ejecutar el SQL en Supabase para crear `bookings`, índices y funciones de concurrencia/expiración.
-4. Levantar la app y verificar endpoint de salud.
+- Pantalla de bienvenida con botón **Book my session**.
+- Vista `/reservar` con calendario (FullCalendar) mostrando slots disponibles.
+- Formulario de nombre, email y WhatsApp (+código país).
+- Resumen de slot y precio.
+- Acción **Confirmar y pagar** que crea una reserva `pending` (bloqueo temporal) vía RPC de Supabase.
+- Redirección temporal a `/checkout/simulado` (placeholder hasta integrar MercadoPago real).
 
-## Estado actual
-
-- ✅ **Paso 1**: scaffolding de Next.js + Tailwind.
-- ✅ **Paso 2**: variables de entorno de referencia, cliente Supabase y esquema SQL base con control de concurrencia por slot.
-- ✅ Fix aplicado: separación segura de variables públicas vs. servidor para evitar fallos por secretos faltantes en módulos compartidos.
-
-## Estructura clave
-
-- `src/app/`: UI y API Routes.
-- `src/lib/env.ts`: validación de variables de entorno obligatorias (con funciones separadas para entorno público/servidor).
-- `src/lib/supabase/`: clientes Supabase (público y service role).
-- `supabase/schema.sql`: tabla `bookings`, índices y funciones SQL de expiración/bloqueo.
-- `.env.local.example`: plantilla de variables requeridas.
-
-## Variables de entorno
-
-1. Copia el ejemplo:
+## Requisitos de entorno
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-2. Completa los valores.
+Completar variables de:
+- Google Calendar
+- MercadoPago
+- WhatsApp Business
+- Supabase
+- App
 
-## Supabase
+## Base de datos (Supabase)
 
-Ejecuta `supabase/schema.sql` en el SQL Editor de tu proyecto Supabase.
+1. Abrir SQL Editor de Supabase.
+2. Ejecutar `supabase/schema.sql`.
+
+Incluye:
+- tabla `bookings`
+- índice único parcial para evitar doble reserva (`pending`/`paid`)
+- `expire_pending_bookings()`
+- `create_pending_booking(...)` con advisory lock por slot
 
 ## Scripts
 
-- `npm run dev`: servidor de desarrollo.
-- `npm run build`: build de producción.
-- `npm run start`: levantar build.
-- `npm run lint`: lint de Next.
-- `npm run typecheck`: chequeo de tipos TypeScript.
+- `npm run dev`
+- `npm run build`
+- `npm run start`
+- `npm run lint`
+- `npm run typecheck`
 
-## Verificación mínima
+## Endpoints disponibles
 
-```bash
-npm install
-npm run dev
-```
+- `GET /api/health`
+- `GET /api/availability?start=YYYY-MM-DD&end=YYYY-MM-DD`
+- `POST /api/bookings/prepare`
 
-Luego abrir:
+## Qué falta para quedar 100%
 
-- `http://localhost:3000`
-- `http://localhost:3000/api/health`
+- Integrar disponibilidad de Google Calendar en `api/availability`.
+- Integrar checkout real de MercadoPago.
+- Implementar webhook MercadoPago con validación de firma.
+- Crear evento en Google Calendar al pagar.
+- Enviar confirmación por WhatsApp automática.
 
-## Nota del entorno automatizado
+## Nota de entorno del agente
 
-En este entorno de ejecución de agente, `npm install` responde `403 Forbidden` hacia npm registry. Eso impide correr `next dev/build/lint/typecheck` aquí, pero no afecta la validez del código para una máquina/CI con acceso normal a npm.
+En este entorno del agente `npm install` está bloqueado por `403` del registry. En entorno local/CI con acceso npm, el proyecto se ejecuta normalmente.
